@@ -7,8 +7,7 @@ import pytest
 from openai import OpenAIError
 from pydantic import ValidationError
 
-from app.agents.llm_recommender import (APIRecommendationError, ArticleRecc,
-                                        recommend)
+from app.agents.llm_recommender import APIRecommendationError, ArticleRecc, recommend
 
 
 class DummyCompletions:
