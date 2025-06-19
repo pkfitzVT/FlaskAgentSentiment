@@ -16,7 +16,7 @@ load_dotenv()
 
 def fetch_and_store_stock(session, symbol: str, dt: pd.Timestamp.date) -> StockPrice:
     """
-    Fetches the stock price for `symbol` on date `dt` and upserts into DB.
+    Fetches the stock price for symbol on date dt and upserts into DB.
     Returns the StockPrice ORM object or None if no data.
     """
     # Use yfinance Ticker.history for reliable data
