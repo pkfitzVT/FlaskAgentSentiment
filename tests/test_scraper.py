@@ -2,7 +2,7 @@
 import pytest
 import requests
 
-from app.agents.scraper import fetch_page
+from app.agents.modules import fetch_page
 
 
 def test_fetch_page_returns_string():
@@ -16,7 +16,7 @@ def test_fetch_page_raises_http_error(monkeypatch):
         def raise_for_status(self):
             raise requests.HTTPError("404 Not Found")
 
-    monkeypatch.setattr("app.agents.scraper.requests.get", lambda url: FakeResp())
+    monkeypatch.setattr("app.modules.scraper.requests.get", lambda url: FakeResp())
 
     with pytest.raises(requests.HTTPError):
         fetch_page("https://example.com/missing")
@@ -27,7 +27,7 @@ def test_fetch_page_raises_timeout(monkeypatch):
     def fake_get(url):
         raise requests.Timeout("connection timed out")
 
-    monkeypatch.setattr("app.agents.scraper.requests.get", fake_get)
+    monkeypatch.setattr("app.modules.scraper.requests.get", fake_get)
 
     with pytest.raises(requests.Timeout):
         fetch_page("https://example.com/slow")
@@ -51,7 +51,7 @@ def test_fetch_page_uses_timeout(monkeypatch):
 
         return FakeResp()
 
-    monkeypatch.setattr("app.agents.scraper.requests.get", fake_get)
+    monkeypatch.setattr("app.modules.scraper.requests.get", fake_get)
 
     result = fetch_page("https://example.com")
     assert isinstance(result, str)
@@ -78,7 +78,7 @@ def test_fetch_page_follows_redirect(monkeypatch):
     def fake_get(url, **kwargs):
         return FakeResp()
 
-    monkeypatch.setattr("app.agents.scraper.requests.get", fake_get)
+    monkeypatch.setattr("app.modules.scraper.requests.get", fake_get)
 
     html = fetch_page("https://example.com/start")
     assert "Real Content" in html

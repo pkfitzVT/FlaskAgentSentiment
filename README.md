@@ -364,7 +364,7 @@ project/
 In `app/agents/scraper_agent.py`, define a class with a simple `fetch()` method:
 
 ```python
-# app/agents/scraper_agent.py
+# app/modules/scraper_agent.py
 import requests
 from bs4 import BeautifulSoup
 
@@ -420,27 +420,34 @@ In `tests/test_scraper.py`, write tests that:
 ```python
 # tests/test_scraper.py
 import pytest
-from app.agents.scraper_agent import ScraperAgent
+from app.agents.modules import ScraperAgent
+
 
 class DummyDB:
-    def __init__(self): self.saved = []
-    def exists(self, url): return False
-    def save_article(self, article): self.saved.append(article)
+   def __init__(self): self.saved = []
 
-@ pytest.fixture(autouse=True)
+   def exists(self, url): return False
+
+   def save_article(self, article): self.saved.append(article)
+
+
+@pytest.fixture(autouse=True)
 def mock_requests(monkeypatch):
-    class DummyResp:
-        text = "<rss><item><title>Test</title><link>http://a</link></item></rss>"
-        def raise_for_status(self): pass
-    monkeypatch.setattr(requests, 'get', lambda *args, **kwargs: DummyResp())
-    yield
+   class DummyResp:
+      text = "<rss><item><title>Test</title><link>http://a</link></item></rss>"
+
+      def raise_for_status(self): pass
+
+   monkeypatch.setattr(requests, 'get', lambda *args, **kwargs: DummyResp())
+   yield
+
 
 def test_scraper_fetch(monkeypatch):
-    db = DummyDB()
-    agent = ScraperAgent(['dummy_feed'], db)
-    new = agent.fetch()
-    assert new == ['http://a']
-    assert len(db.saved) == 1
+   db = DummyDB()
+   agent = ScraperAgent(['dummy_feed'], db)
+   new = agent.fetch()
+   assert new == ['http://a']
+   assert len(db.saved) == 1
 ```
 
 ### 5. Manual Validation
@@ -448,8 +455,8 @@ def test_scraper_fetch(monkeypatch):
 1. Run the test suite: `pytest tests/test_scraper.py -q` (should pass).
 2. In a Python shell:
    ```bash
-   from app.agents.scraper_agent import ScraperAgent
-   from app.agents.db_agent import DbAgent  # real implementation
+   from app.modules.scraper_agent import ScraperAgent
+   from app.modules.db_agent import DbAgent  # real implementation
    agent = ScraperAgent(['https://www.reuters.com/rss/technologyNews'], DbAgent())
    print(agent.fetch())  # should print list of new article URLs
    ```
