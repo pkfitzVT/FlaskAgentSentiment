@@ -1,84 +1,82 @@
-# tests/test_scraper.py
+from datetime import date
+
 import pytest
 import requests
 
-from app.agents.modules import fetch_page
+from app.agents.scraper import fetch_articles
 
 
-def test_fetch_page_returns_string():
-    # “example.com” is just a placeholder
-    result = fetch_page("https://example.com")
-    assert isinstance(result, str), "Expected fetched page to be returned as a string"
+class DummyResponse:
+    def __init__(self, json_data, status_code: int = 200):
+        self._json = json_data
+        self.status_code = status_code
+
+    def raise_for_status(self) -> None:
+        if self.status_code != 200:
+            raise requests.HTTPError(f"Status {self.status_code}")
+
+    def json(self) -> dict:
+        return self._json
 
 
-def test_fetch_page_raises_http_error(monkeypatch):
-    class FakeResp:
-        def raise_for_status(self):
-            raise requests.HTTPError("404 Not Found")
-
-    monkeypatch.setattr("app.modules.scraper.requests.get", lambda url: FakeResp())
-
-    with pytest.raises(requests.HTTPError):
-        fetch_page("https://example.com/missing")
-
-
-def test_fetch_page_raises_timeout(monkeypatch):
-    # Simulate a network timeout
-    def fake_get(url):
-        raise requests.Timeout("connection timed out")
-
-    monkeypatch.setattr("app.modules.scraper.requests.get", fake_get)
-
-    with pytest.raises(requests.Timeout):
-        fetch_page("https://example.com/slow")
-
-
-def test_fetch_page_uses_timeout(monkeypatch):
-    captured = {}
-
-    def fake_get(url, **kwargs):
-        # capture any kwargs passed
-        captured["url"] = url
-        captured["kwargs"] = kwargs
-
-        class FakeResp:
-            def raise_for_status(self):
-                pass
-
-            @property
-            def text(self):
-                return "<html></html>"
-
-        return FakeResp()
-
-    monkeypatch.setattr("app.modules.scraper.requests.get", fake_get)
-
-    result = fetch_page("https://example.com")
-    assert isinstance(result, str)
-
-    # Now assert that fetch_page passed a timeout argument:
-    assert (
-        "timeout" in captured["kwargs"]
-    ), "Expected fetch_page to call requests.get with a timeout"
-    assert isinstance(
-        captured["kwargs"]["timeout"], (int, float)
-    ), "timeout should be a number"
+@pytest.fixture
+def sample_payload() -> dict:
+    return {
+        "response": {
+            "results": [
+                {
+                    "webUrl": "https://example.com/a",
+                    "webTitle": "Test Title A",
+                    "fields": {"bodyText": "Some body text A."},
+                    "webPublicationDate": "2025-06-10T12:00:00Z",
+                },
+                {
+                    "webUrl": "https://example.com/b",
+                    "webTitle": "Test Title B",
+                    "fields": {"bodyText": "Some body text B."},
+                    "webPublicationDate": "2025-06-11T15:30:00Z",
+                },
+            ]
+        }
+    }
 
 
-def test_fetch_page_follows_redirect(monkeypatch):
-    # Simulate a redirect response that *already* contains the final HTML
-    class FakeResp:
-        status_code = 200
-        text = "<html>Real Content</html>"
+def test_fetch_articles_happy_path(monkeypatch, sample_payload):
+    def fake_get(url: str, params: dict, timeout: float):
+        assert "content.guardianapis.com" in url
+        assert params["q"] == "Nvidia"
+        return DummyResponse(sample_payload)
 
-        def raise_for_status(self):
-            pass
+    monkeypatch.setattr("requests.get", fake_get)
 
-    # Our fake_get only gets called once, because requests did its own redirect
-    def fake_get(url, **kwargs):
-        return FakeResp()
+    articles = fetch_articles("Nvidia", "dummy-key", page_size=2)
+    assert len(articles) == 2
 
-    monkeypatch.setattr("app.modules.scraper.requests.get", fake_get)
+    first, second = articles
+    assert first["webUrl"] == "https://example.com/a"
+    assert first["webTitle"] == "Test Title A"
+    assert first["bodyText"] == "Some body text A."
+    assert isinstance(first["publishDate"], date)
+    assert first["publishDate"].isoformat() == "2025-06-10"
 
-    html = fetch_page("https://example.com/start")
-    assert "Real Content" in html
+    assert second["webUrl"].endswith("/b")
+    assert second["publishDate"].day == 11
+
+
+def test_fetch_articles_api_error(monkeypatch):
+    def broken_get(*args, **kwargs):
+        raise requests.ConnectionError("fail")
+
+    monkeypatch.setattr("requests.get", broken_get)
+    result = fetch_articles("Anything", "key", page_size=5)
+    assert result == []
+
+
+def test_fetch_articles_bad_json(monkeypatch):
+    class BadResponse(DummyResponse):
+        def json(self):
+            raise ValueError("not json")
+
+    monkeypatch.setattr("requests.get", lambda *args, **kwargs: BadResponse({}))
+    result = fetch_articles("X", "key", page_size=5)
+    assert result == []
