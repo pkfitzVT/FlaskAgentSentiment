@@ -54,6 +54,42 @@
   </div>
 </div>
 
+<div class="card mb-4 shadow">
+  <div class="card-body">
+    <h4 class="card-title">Logistic Regression: LLM Recommendation → Next-Day Up/Down</h4>
+    <div class="border rounded p-3 bg-light mb-2">
+      <div><strong>Model:</strong> P(up) = sigmoid({{ logit_coef|round(2) }} × rec_score + {{ logit_intercept|round(2) }})</div>
+      <div><strong>Accuracy:</strong> {{ (logit_accuracy*100)|round(2) }}%</div>
+    </div>
+    <div>
+      <strong>Confusion Matrix:</strong>
+      <table class="table table-bordered my-2" style="max-width:350px;">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Predicted: Down</th>
+            <th>Predicted: Up</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>Actual: Down</th>
+            <td>{{ logit_confmat[0][0] }}</td>
+            <td>{{ logit_confmat[0][1] }}</td>
+          </tr>
+          <tr>
+            <th>Actual: Up</th>
+            <td>{{ logit_confmat[1][0] }}</td>
+            <td>{{ logit_confmat[1][1] }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+
 <!-- Plotly CDN -->
 <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
 <script>

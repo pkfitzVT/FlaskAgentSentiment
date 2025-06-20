@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from flask import Blueprint, abort, render_template
 from scipy.stats import linregress
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, r2_score
 
 from app.agents.db_writer import Analysis, Article, get_session
 from scripts.ml_sentiment_stock_return import main
@@ -56,10 +56,9 @@ def analyze():
     actual_returns = df["return"].astype(float).tolist()
     predicted_returns = df["predicted_return"].astype(float).tolist()
 
-    # X axis for trendlines
     X = np.arange(len(dates), dtype=float)
 
-    # ---- PRICE TREND (robust!) ----
+    # ---- PRICE TREND ----
     arr_prices = np.array(prices, dtype=float)
     mask_price = np.isfinite(arr_prices)
     X_price = X[mask_price]
@@ -68,7 +67,6 @@ def analyze():
     if len(y_price) >= 2:
         price_model = LinearRegression().fit(X_price.reshape(-1, 1), y_price)
         price_trend = price_model.predict(X_price.reshape(-1, 1)).tolist()
-        # Insert trend values into correct positions on full timeline
         for idx, val in zip(np.where(mask_price)[0], price_trend):
             full_price_trend[idx] = val
         price_r2 = r2_score(y_price, price_trend)
@@ -83,7 +81,7 @@ def analyze():
         price_r2 = price_coef = price_intercept = float("nan")
         price_p_value_str = "N/A"
 
-    # ---- SENTIMENT TREND (robust!) ----
+    # ---- SENTIMENT TREND ----
     arr_sentiments = np.array(sentiments, dtype=float)
     mask_sentiment = np.isfinite(arr_sentiments)
     X_sent = X[mask_sentiment]
@@ -99,6 +97,23 @@ def analyze():
         sentiment_intercept = float(sentiment_model.intercept_)
     else:
         sentiment_r2 = sentiment_coef = sentiment_intercept = float("nan")
+
+    # ---- LOGISTIC REGRESSION: LLM Rec vs. Next-Day Direction ----
+    rec_map = {"strong_sell": -2, "sell": -1, "hold": 0, "buy": 1, "strong_buy": 2}
+    df["rec_score"] = df["recommendation"].map(rec_map)
+    df["return_up"] = (df["return"] > 0).astype(int)
+    logit_df = df.dropna(subset=["rec_score"])
+
+    X_logit = logit_df[["rec_score"]]
+    y_logit = logit_df["return_up"]
+
+    logit = LogisticRegression()
+    logit.fit(X_logit, y_logit)
+    y_logit_pred = logit.predict(X_logit)
+    logit_accuracy = accuracy_score(y_logit, y_logit_pred)
+    logit_confmat = confusion_matrix(y_logit, y_logit_pred)
+    logit_coef = float(logit.coef_[0][0])
+    logit_intercept = float(logit.intercept_[0])
 
     return render_template(
         "analyze.html",
@@ -119,4 +134,9 @@ def analyze():
         r2=results["r2"],
         mse=results["mse"],
         directional_accuracy=results["directional_accuracy"],
+        # Logistic regression results
+        logit_accuracy=logit_accuracy,
+        logit_coef=logit_coef,
+        logit_intercept=logit_intercept,
+        logit_confmat=logit_confmat.tolist(),
     )

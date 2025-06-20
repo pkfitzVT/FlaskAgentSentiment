@@ -9,18 +9,30 @@ load_dotenv()
 
 def load_article_sentiment_prices(session):
     """
-    Load articles with their sentiment and closing price for the publish date.
+    Load articles with their sentiment, LLM recommendation,
+    and closing price for the publish date.
     """
     rows = (
         session.query(
-            Article.publish_date, Analysis.sentiment_score, StockPrice.close_price
+            Article.publish_date,
+            Analysis.sentiment_score,
+            Analysis.recommendation,  # <-- Add this line!
+            StockPrice.close_price,
         )
         .join(Analysis, Article.article_id == Analysis.article_id)
         .join(StockPrice, StockPrice.price_date == Article.publish_date)
         .order_by(Article.publish_date)
         .all()
     )
-    return pd.DataFrame(rows, columns=["date", "sentiment", "close_price"])
+    return pd.DataFrame(
+        rows,
+        columns=[
+            "date",
+            "sentiment",
+            "recommendation",
+            "close_price",
+        ],  # <-- Add 'recommendation' here!
+    )
 
 
 def load_next_day_prices(session):
