@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-4">
+  <h2>Analysis Dashboard</h2>
+  <div id="price-chart"></div>
+  <div id="sentiment-chart"></div>
+</div>
+
+<!-- Plotly CDN -->
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+<script>
+// Data from Flask/Jinja
+const dates = {{ dates|tojson }};
+const sentiments = {{ sentiments|tojson }};
+const prices = {{ prices|tojson }};
+
+// Price over time
+Plotly.newPlot('price-chart', [{
+  x: dates,
+  y: prices,
+  type: 'scatter',
+  mode: 'lines+markers',
+  name: 'Close Price'
+}], {
+  title: "Stock Price Over Time",
+  xaxis: {title: "Date"},
+  yaxis: {title: "Price"}
+});
+
+// Sentiment over time
+Plotly.newPlot('sentiment-chart', [{
+  x: dates,
+  y: sentiments,
+  type: 'scatter',
+  mode: 'lines+markers',
+  name: 'Sentiment Score'
+}], {
+  title: "Sentiment Over Time",
+  xaxis: {title: "Date"},
+  yaxis: {title: "Sentiment Score", range: [-1,1]}
+});
+</script>
+{% endblock %}
