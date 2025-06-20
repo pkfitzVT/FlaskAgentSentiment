@@ -1,14 +1,10 @@
-from flask import Blueprint, Flask
+# app/web/__init__.py
+from flask import Flask
 
-bp = Blueprint("web", __name__)
-
-
-@bp.route("/")
-def index():
-    return "Flask is running!"
+from app.web.routes import bp  # ← use absolute import, not relative
 
 
-def create_app():
+def create_app() -> Flask:
     app = Flask(__name__)
     app.register_blueprint(bp)
     return app

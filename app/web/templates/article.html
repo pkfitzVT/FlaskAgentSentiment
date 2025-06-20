@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-4">
+  <h3>{{ art.title }}</h3>
+  <p><em>{{ art.publish_date }}</em></p>
+  <hr>
+  <pre style="white-space: pre-wrap;">{{ art.body_text }}</pre>
+</div>
+{% endblock %}
