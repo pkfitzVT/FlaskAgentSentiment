@@ -1,7 +1,9 @@
 # app/web/routes.py
+import pandas as pd
 from flask import Blueprint, abort, render_template
 
-from app.agents.db_writer import Analysis, Article, StockPrice, get_session
+from app.agents.db_writer import Analysis, Article, get_session
+from scripts.ml_sentiment_stock_return import main  # Import your main function
 
 bp = Blueprint("web", __name__)
 
@@ -40,32 +42,26 @@ def article(aid):
 
 @bp.route("/analyze")
 def analyze():
-    session = get_session()
-    # Get publish_date, sentiment_score, and a price for each article
-    # (Modify join logic to match your actual DB structure)
-    results = (
-        session.query(
-            Article.publish_date,
-            Analysis.sentiment_score,
-            Analysis.recommendation,
-            StockPrice.close_price,
-        )
-        .join(Analysis, Article.article_id == Analysis.article_id)
-        .join(StockPrice, StockPrice.price_date == Article.publish_date)
-        .order_by(Article.publish_date)
-        .all()
-    )
-    # Unpack columns for plotting
-    dates = [r[0].isoformat() for r in results]
-    sentiments = [r[1] for r in results]
-    recs = [r[2] for r in results]
-    prices = [float(r[3]) for r in results]
+    results = main()
+    df = results["df"]
 
-    # Pass the data as dict to the template
+    # Ensure 'date' is datetime (fixes your error!)
+    df["date"] = pd.to_datetime(df["date"])
+
+    dates = df["date"].dt.strftime("%Y-%m-%d").tolist()
+    sentiments = df["sentiment"].tolist()
+    prices = df["close_price"].tolist()
+    actual_returns = df["return"].tolist()
+    predicted_returns = df["predicted_return"].tolist()
+
     return render_template(
         "analyze.html",
         dates=dates,
         sentiments=sentiments,
         prices=prices,
-        recs=recs,
+        actual_returns=actual_returns,
+        predicted_returns=predicted_returns,
+        r2=results["r2"],
+        mse=results["mse"],
+        directional_accuracy=results["directional_accuracy"],
     )

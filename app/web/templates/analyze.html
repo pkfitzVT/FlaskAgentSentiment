@@ -4,17 +4,18 @@
   <h2>Analysis Dashboard</h2>
   <div id="price-chart"></div>
   <div id="sentiment-chart"></div>
+  <div id="return-chart"></div>
 </div>
 
 <!-- Plotly CDN -->
 <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
 <script>
-// Data from Flask/Jinja
 const dates = {{ dates|tojson }};
 const sentiments = {{ sentiments|tojson }};
 const prices = {{ prices|tojson }};
+const actualReturns = {{ actual_returns|tojson }};
+const predictedReturns = {{ predicted_returns|tojson }};
 
-// Price over time
 Plotly.newPlot('price-chart', [{
   x: dates,
   y: prices,
@@ -27,7 +28,6 @@ Plotly.newPlot('price-chart', [{
   yaxis: {title: "Price"}
 });
 
-// Sentiment over time
 Plotly.newPlot('sentiment-chart', [{
   x: dates,
   y: sentiments,
@@ -38,6 +38,28 @@ Plotly.newPlot('sentiment-chart', [{
   title: "Sentiment Over Time",
   xaxis: {title: "Date"},
   yaxis: {title: "Sentiment Score", range: [-1,1]}
+});
+
+// ML Chart!
+Plotly.newPlot('return-chart', [
+  {
+    x: dates,
+    y: actualReturns,
+    type: 'scatter',
+    mode: 'lines+markers',
+    name: 'Actual Return'
+  },
+  {
+    x: dates,
+    y: predictedReturns,
+    type: 'scatter',
+    mode: 'lines+markers',
+    name: 'Predicted Return'
+  }
+], {
+  title: "Actual vs. Predicted Next-Day Return",
+  xaxis: {title: "Date"},
+  yaxis: {title: "Return"}
 });
 </script>
 {% endblock %}
