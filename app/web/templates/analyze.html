@@ -1,46 +1,115 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container my-4">
-  <h2>Analysis Dashboard</h2>
-  <div id="price-chart"></div>
-  <div id="sentiment-chart"></div>
-  <div id="return-chart"></div>
+  <h2 class="mb-4">Analysis Dashboard</h2>
+
+  <!-- Stock Price Card -->
+  <div class="card mb-4 shadow">
+    <div class="card-body">
+      <h4 class="card-title">Stock Price Over Time</h4>
+      <div class="d-flex flex-wrap gap-4 align-items-center">
+        <div class="border rounded p-3 bg-light flex-grow-0">
+          <div><strong>Trend:</strong> y = {{ price_coef|round(4) }}·t + {{ price_intercept|round(2) }}</div>
+          <div><strong>R²:</strong> {{ price_r2|round(4) }}</div>
+          <div><strong>p-value:</strong> {{ price_p_value_str }}</div>
+        </div>
+        <div class="flex-grow-1" style="min-width: 350px;">
+          <div id="price-chart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sentiment Card -->
+  <div class="card mb-4 shadow">
+    <div class="card-body">
+      <h4 class="card-title">Sentiment Over Time</h4>
+      <div class="d-flex flex-wrap gap-4 align-items-center">
+        <div class="border rounded p-3 bg-light flex-grow-0">
+          <div><strong>Trend:</strong> y = {{ sentiment_coef|round(4) }}·t + {{ sentiment_intercept|round(2) }}</div>
+          <div><strong>R²:</strong> {{ sentiment_r2|round(4) }}</div>
+        </div>
+        <div class="flex-grow-1" style="min-width: 350px;">
+          <div id="sentiment-chart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ML Model Card -->
+  <div class="card mb-4 shadow">
+    <div class="card-body">
+      <h4 class="card-title">ML: Actual vs. Predicted Next-Day Return</h4>
+      <div class="d-flex flex-wrap gap-4 align-items-center">
+        <div class="border rounded p-3 bg-light flex-grow-0">
+          <div><strong>R²:</strong> {{ r2|round(4) }}</div>
+          <div><strong>MSE:</strong> {{ mse|round(6) }}</div>
+          <div><strong>Directional Accuracy:</strong> {{ (directional_accuracy*100)|round(2) }}%</div>
+        </div>
+        <div class="flex-grow-1" style="min-width: 350px;">
+          <div id="return-chart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Plotly CDN -->
 <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
 <script>
 const dates = {{ dates|tojson }};
-const sentiments = {{ sentiments|tojson }};
 const prices = {{ prices|tojson }};
+const priceTrend = {{ price_trend|tojson }};
+const sentiments = {{ sentiments|tojson }};
+const sentimentTrend = {{ sentiment_trend|tojson }};
 const actualReturns = {{ actual_returns|tojson }};
 const predictedReturns = {{ predicted_returns|tojson }};
 
-Plotly.newPlot('price-chart', [{
-  x: dates,
-  y: prices,
-  type: 'scatter',
-  mode: 'lines+markers',
-  name: 'Close Price'
-}], {
-  title: "Stock Price Over Time",
+// Price chart with trend
+Plotly.newPlot('price-chart', [
+  {
+    x: dates,
+    y: prices,
+    type: 'scatter',
+    mode: 'lines+markers',
+    name: 'Close Price'
+  },
+  {
+    x: dates,
+    y: priceTrend,
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Trend (R²={{ price_r2|round(2) }})'
+  }
+], {
+  title: "",
   xaxis: {title: "Date"},
   yaxis: {title: "Price"}
 });
 
-Plotly.newPlot('sentiment-chart', [{
-  x: dates,
-  y: sentiments,
-  type: 'scatter',
-  mode: 'lines+markers',
-  name: 'Sentiment Score'
-}], {
-  title: "Sentiment Over Time",
+// Sentiment chart with trend
+Plotly.newPlot('sentiment-chart', [
+  {
+    x: dates,
+    y: sentiments,
+    type: 'scatter',
+    mode: 'lines+markers',
+    name: 'Sentiment Score'
+  },
+  {
+    x: dates,
+    y: sentimentTrend,
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Trend (R²={{ sentiment_r2|round(2) }})'
+  }
+], {
+  title: "",
   xaxis: {title: "Date"},
   yaxis: {title: "Sentiment Score", range: [-1,1]}
 });
 
-// ML Chart!
+// ML actual vs predicted return chart
 Plotly.newPlot('return-chart', [
   {
     x: dates,
@@ -57,7 +126,7 @@ Plotly.newPlot('return-chart', [
     name: 'Predicted Return'
   }
 ], {
-  title: "Actual vs. Predicted Next-Day Return",
+  title: "",
   xaxis: {title: "Date"},
   yaxis: {title: "Return"}
 });
