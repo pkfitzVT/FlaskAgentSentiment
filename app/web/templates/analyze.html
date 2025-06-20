@@ -52,45 +52,44 @@
       </div>
     </div>
   </div>
-</div>
 
-<div class="card mb-4 shadow">
+  <!-- Logistic Regression Card -->
+  <div class="card mb-4 shadow">
   <div class="card-body">
     <h4 class="card-title">Logistic Regression: LLM Recommendation → Next-Day Up/Down</h4>
-    <div class="border rounded p-3 bg-light mb-2">
-      <div><strong>Model:</strong> P(up) = sigmoid({{ logit_coef|round(2) }} × rec_score + {{ logit_intercept|round(2) }})</div>
-      <div><strong>Accuracy:</strong> {{ (logit_accuracy*100)|round(2) }}%</div>
-    </div>
-    <div>
-      <strong>Confusion Matrix:</strong>
-      <table class="table table-bordered my-2" style="max-width:350px;">
-        <thead>
-          <tr>
-            <th></th>
-            <th>Predicted: Down</th>
-            <th>Predicted: Up</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th>Actual: Down</th>
-            <td>{{ logit_confmat[0][0] }}</td>
-            <td>{{ logit_confmat[0][1] }}</td>
-          </tr>
-          <tr>
-            <th>Actual: Up</th>
-            <td>{{ logit_confmat[1][0] }}</td>
-            <td>{{ logit_confmat[1][1] }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="d-flex flex-wrap gap-4 align-items-start">
+      <div class="border rounded p-3 bg-light mb-2 flex-grow-0">
+        <div><strong>Model:</strong> P(up) = sigmoid({{ logit_coef|round(2) }} × rec_score + {{ logit_intercept|round(2) }})</div>
+        <div><strong>Accuracy:</strong> {{ (logit_accuracy*100)|round(2) }}%</div>
+      </div>
+      <div class="flex-grow-1">
+        <strong>Confusion Matrix:</strong>
+        <table class="table table-bordered text-center mx-auto" style="max-width:350px;">
+          <thead class="table-light">
+            <tr>
+              <th></th>
+              <th>Pred: Down</th>
+              <th>Pred: Up</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th class="table-light">Actual: Down</th>
+              <td class="{% if logit_confmat[0][0] %}bg-success text-white{% endif %}">{{ logit_confmat[0][0] }}</td>
+              <td class="{% if logit_confmat[0][1] %}bg-danger text-white{% endif %}">{{ logit_confmat[0][1] }}</td>
+            </tr>
+            <tr>
+              <th class="table-light">Actual: Up</th>
+              <td class="{% if logit_confmat[1][0] %}bg-danger text-white{% endif %}">{{ logit_confmat[1][0] }}</td>
+              <td class="{% if logit_confmat[1][1] %}bg-success text-white{% endif %}">{{ logit_confmat[1][1] }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
-
-
-
-<!-- Plotly CDN -->
+<!-- Plotly CDN and Chart Scripts (STILL INSIDE block content!) -->
 <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
 <script>
 const dates = {{ dates|tojson }};
