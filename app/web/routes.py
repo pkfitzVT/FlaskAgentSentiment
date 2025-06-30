@@ -4,6 +4,7 @@ from flask import Blueprint, abort, render_template
 from scipy.stats import linregress
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix, r2_score
+from sklearn.tree import DecisionTreeClassifier
 
 from app.agents.db_writer import Analysis, Article, get_session
 from scripts.ml_sentiment_stock_return import main
@@ -107,13 +108,30 @@ def analyze():
     X_logit = logit_df[["rec_score"]]
     y_logit = logit_df["return_up"]
 
+    # 1) Base logistic model
     logit = LogisticRegression()
     logit.fit(X_logit, y_logit)
     y_logit_pred = logit.predict(X_logit)
+
     logit_accuracy = accuracy_score(y_logit, y_logit_pred)
     logit_confmat = confusion_matrix(y_logit, y_logit_pred)
     logit_coef = float(logit.coef_[0][0])
     logit_intercept = float(logit.intercept_[0])
+
+    # 2) VIX-enhanced decision tree
+    # ⚠️ Make sure df["vix_close"] exists at this point
+    median_vix = df["vix_close"].median()
+    df["strongbuy_and_lowvol"] = (
+        (df["recommendation"] == "strong_buy") & (df["vix_close"] < median_vix)
+    ).astype(int)
+
+    X_vix = df[["strongbuy_and_lowvol"]]
+    y_vix = df["return_up"]
+
+    tree_vix = DecisionTreeClassifier(max_depth=3, random_state=42)
+    tree_vix.fit(X_vix, y_vix)
+    y_vix_pred = tree_vix.predict(X_vix)
+    confmat_vix = confusion_matrix(y_vix, y_vix_pred)
 
     return render_template(
         "analyze.html",
@@ -138,5 +156,6 @@ def analyze():
         logit_accuracy=logit_accuracy,
         logit_coef=logit_coef,
         logit_intercept=logit_intercept,
-        logit_confmat=logit_confmat.tolist(),
+        confmat_base=logit_confmat.tolist(),  # renamed to match template
+        confmat_vix=confmat_vix.tolist(),
     )

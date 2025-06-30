@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import yfinance as yf
 from dotenv import load_dotenv
 
 from app.agents.db_writer import Analysis, Article, StockPrice, get_session
@@ -100,6 +101,25 @@ def evaluate_model(df):
     return r2, mse, directional_acc
 
 
+def fetch_and_merge_vix(df):
+    # Ensure article dates are proper datetimes
+    df["date"] = pd.to_datetime(df["date"])
+
+    # 1) Download VIX for the same date range as your stock data
+    start = df["date"].min()
+    end = df["date"].max()
+    vix = yf.download("^VIX", start=start, end=end)
+    vix = vix.reset_index()[["Date", "Close"]]
+    vix.columns = ["date", "vix_close"]
+    vix["date"] = pd.to_datetime(vix["date"])
+
+    # 2) Merge-asof so each article date gets the most recent VIX
+    df = pd.merge_asof(
+        df.sort_values("date"), vix.sort_values("date"), on="date", direction="backward"
+    )
+    return df
+
+
 def main():
     session = get_session()
     article_df = load_article_sentiment_prices(session)
@@ -107,6 +127,8 @@ def main():
     df = merge_data(article_df, next_price_df)
     model, df = fit_model(df)
     r2, mse, directional_acc = evaluate_model(df)
+    df = fetch_and_merge_vix(df)
+
     return {
         "r2": r2,
         "mse": mse,
