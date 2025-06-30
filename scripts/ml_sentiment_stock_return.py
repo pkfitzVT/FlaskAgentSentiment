@@ -8,15 +8,12 @@ load_dotenv()
 
 
 def load_article_sentiment_prices(session):
-    """
-    Load articles with their sentiment, LLM recommendation,
-    and closing price for the publish date.
-    """
     rows = (
         session.query(
             Article.publish_date,
             Analysis.sentiment_score,
-            Analysis.recommendation,  # <-- Add this line!
+            Analysis.sentiment_label,
+            Analysis.recommendation,
             StockPrice.close_price,
         )
         .join(Analysis, Article.article_id == Analysis.article_id)
@@ -24,15 +21,28 @@ def load_article_sentiment_prices(session):
         .order_by(Article.publish_date)
         .all()
     )
-    return pd.DataFrame(
+
+    # Build the DataFrame with raw score & label
+    df = pd.DataFrame(
         rows,
         columns=[
             "date",
-            "sentiment",
+            "sentiment_score",
+            "sentiment_label",
             "recommendation",
             "close_price",
-        ],  # <-- Add 'recommendation' here!
+        ],
     )
+
+    # Overwrite `sentiment` to be the signed score
+    df["sentiment"] = df["sentiment_score"] * df["sentiment_label"].map(
+        {"POSITIVE": 1, "NEGATIVE": -1}
+    )
+
+    # Drop the now‐unneeded raw columns
+    df = df.drop(columns=["sentiment_score", "sentiment_label"])
+
+    return df
 
 
 def load_next_day_prices(session):
